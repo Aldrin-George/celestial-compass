@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { mockEvents, mockApod } from './data/mockData';
+import { mockApod } from './data/mockData';
 import CosmicFeature from './components/CosmicFeature';
 import ISSTracker from './components/ISSTracker';
 import EventsDisplay from './components/EventsDisplay';
@@ -12,14 +12,19 @@ function App() {
     const [selectedEvent, setSelectedEvent] = useState(null);
 
     const handleSearch = () => {
-        // In a real app, you would geocode the location string to get lat/lon
         setSearchedLocation({ name: location, lat: 9.56, lon: 76.78 });
-        
-        // In a real app, this would be an API call to your backend:
-        // fetch(`http://localhost:5000/api/events?location=${location}`)
-        //   .then(res => res.json())
-        //   .then(data => setEvents(data));
-        setEvents(mockEvents.sort((a, b) => new Date(a.date) - new Date(b.date)));
+
+        // The URL now includes the location!
+        // We use encodeURIComponent to make sure spaces and special characters are handled correctly.
+        fetch(`http://localhost:5000/api/events?location=${encodeURIComponent(location)}`)
+            .then(response => response.json())
+            .then(data => {
+                const sortedEvents = data.sort((a, b) => new Date(a.date) - new Date(b.date));
+                setEvents(sortedEvents);
+            })
+            .catch(error => {
+                console.error("Error fetching events from backend:", error);
+            });
     };
 
     useEffect(() => {

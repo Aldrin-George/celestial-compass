@@ -4,8 +4,10 @@ import * as THREE from 'three';
 const CosmicFeature = ({ apod, location }) => {
     const globeContainerRef = useRef(null);
 
+    // This useEffect handles the 3D globe
     useEffect(() => {
         if (!globeContainerRef.current || !location) return;
+        // Clear the container on re-render
         while (globeContainerRef.current.firstChild) {
             globeContainerRef.current.removeChild(globeContainerRef.current.firstChild);
         }
@@ -24,9 +26,7 @@ const CosmicFeature = ({ apod, location }) => {
 
         const phi = (90 - location.lat) * (Math.PI / 180);
         const theta = (location.lon + 180) * (Math.PI / 180);
-        camera.position.x = -10 * Math.sin(phi) * Math.cos(theta);
-        camera.position.y = 10 * Math.cos(phi);
-        camera.position.z = 10 * Math.sin(phi) * Math.sin(theta);
+        camera.position.set(-10 * Math.sin(phi) * Math.cos(theta), 10 * Math.cos(phi), 10 * Math.sin(phi) * Math.sin(theta));
         camera.lookAt(earth.position);
 
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -39,22 +39,45 @@ const CosmicFeature = ({ apod, location }) => {
             renderer.render(scene, camera);
         };
         animate();
-        
+
         return () => cancelAnimationFrame(animationFrameId);
 
     }, [location]);
 
+    // This function decides whether to render an image or a video
+    const renderMedia = () => {
+        if (apod.media_type === 'video') {
+            return (
+                <iframe
+                    src={apod.url}
+                    title="Astronomy Video of the Day"
+                    frameBorder="0"
+                    allow="encrypted-media"
+                    allowFullScreen
+                    className="rounded-lg mb-4 w-full h-auto aspect-video object-cover"
+                />
+            );
+        } else {
+            return (
+                <img
+                    src={apod.url}
+                    alt={apod.title}
+                    className="rounded-lg mb-4 w-full h-auto aspect-video object-cover"
+                />
+            );
+        }
+    };
+
     return (
-        <div className="glass-card p-6">
-            <h2 className="text-2xl font-semibold mb-4">Today's Cosmic Feature</h2>
+        <>
             <div ref={globeContainerRef} id="globe-container"></div>
             <p className="text-center mt-2 text-indigo-300 text-sm">Your Location from Orbit</p>
             <div className="mt-4">
-                <h3 className="text-xl font-bold mb-2">{apod.title}</h3>
-                <img src={apod.image} alt={apod.title} className="rounded-lg mb-4 w-full h-auto aspect-video object-cover" />
+                <h3 className="text-xl font-bold mb-2">{apod.title || "Astronomy Picture of the Day"}</h3>
+                {renderMedia()}
                 <p className="text-gray-300 text-sm max-h-24 overflow-y-auto">{apod.explanation}</p>
             </div>
-        </div>
+        </>
     );
 };
 

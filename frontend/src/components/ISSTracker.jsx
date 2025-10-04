@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react'; // <-- This line is now fixed
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import 'leaflet/dist/leaflet.css'; // Ensures the map CSS is loaded
 import Icon from './Icon';
 
 const ISSTracker = () => {
@@ -13,12 +13,16 @@ const ISSTracker = () => {
 
         mapRef.current = L.map(mapContainerRef.current, { zoomControl: false }).setView([10, 0], 2);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapRef.current);
+
+        // This is the corrected icon definition
         const issIcon = L.icon({
-            iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZHTiI0OCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTIuMjUgMi4wNDJhOS45OCA5Ljk4IDAgMCAxIDcuNzEgNy43MSA5Ljk4IDkuOTggMCAwIDEgLTcuNzEgNy43MSA5Ljk4IDkuOTggMCAwIDEgLTcuNzEtNy47MUE5Ljk4IDkuOTggMCAwIDEgMTIuMjUgMi4wNDJaIi8+PHBhdGggZD0ibTcgMTIgNSA1Ii8+PHBhdGggZD0ibTEyLjUgNi41LTEgMSIvPjxwYXRoIGQ9Im02LjUgMTIuNS0xIDEiLz48cGF0aCBkPSJNMTIgMjJ2LTIiLz48cGF0aCBkPSJNMjIgMTJoLTIiLz48cGF0aCBkPSJtMTggMTgtMS0xIi8+PHBhdGggZD0ibTYgNi0xLTEiLz48L3N2Zz4=',
+            iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTIuMjUgMi4wNDJhOS45OCA5Ljk4IDAgMCAxIDcuNzEgNy47MSA5Ljk4IDkuOTggMCAwIDEgLTcuNzEgNy43MSA5Ljk4IDkuOTggMCAwIDEgLTcuNzEtNy47MUE5Ljk4IDkuOTggMCAwIDEgMTIuMjUgMi4wNDJaIi8+PHBhdGggZD0ibTcgMTIgNSA1Ii8+PHBhdGggZD0ibTEyLjUgNi45LTEgMSIvPjxwYXRoIGQ9Im02LjUgMTIuNS0xIDEiLz48cGF0aCBkPSJNMTIgMjJ2LTIiLz48cGF0aCBkPSJNMjIgMTJoLTIiLz48cGF0aCBkPSJtMTggMTgtMS0xIi8+PHBhdGggZD0ibTYgNi0xLTEiLz48L3N2Zz4=',
             iconSize: [40, 40],
+            iconAnchor: [20, 20],
         });
+
         const issMarker = L.marker([0, 0], { icon: issIcon }).addTo(mapRef.current);
-        
+
         let mockLat = 9.5, mockLon = 76.7;
         const intervalId = setInterval(() => {
             mockLon += 5; if (mockLon > 180) mockLon = -180;

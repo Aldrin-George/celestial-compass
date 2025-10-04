@@ -1,44 +1,74 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const { staticEvents } = require('../data/staticEvents'); // Make sure we have our other events
 
-// This is the new "smart" endpoint
 router.get('/events', async (req, res) => {
-    // For this demo, we will use fixed coordinates for Koovappally, Kerala.
-    // A real app would first convert the user's location string to these coordinates.
-    const latitude = 9.56;
-    const longitude = 76.78;
-    const altitude = 20; // altitude in meters
+    const locationQuery = req.query.location;
+    console.log(`\n--- New Event Request for "${locationQuery}" ---`);
 
+    if (!locationQuery) {
+        return res.status(400).json({ message: "A location query is required." });
+    }
+
+    // CORRECTED: We are now looking for the POSITIONSTACK key
+    const POSITIONSTACK_API_KEY = process.env.POSITIONSTACK_API_KEY;
     const N2YO_API_KEY = process.env.N2YO_API_KEY;
-    const N2YO_BASE_URL = 'https://api.n2yo.com/rest/v1/satellite';
-    const ISS_NORAD_ID = '25544'; // The official ID for the ISS
 
-    // The URL for the N2YO API to get the next 5 ISS passes
-    const requestUrl = `${N2YO_BASE_URL}/radiopasses/${ISS_NORAD_ID}/${latitude}/${longitude}/${altitude}/2/10/&apiKey=${N2YO_API_KEY}`;
+    console.log(`[DEBUG] Positionstack Key Loaded: ${!!POSITIONSTACK_API_KEY}`);
+    console.log(`[DEBUG] N2YO Key Loaded:          ${!!N2YO_API_KEY}`);
 
     try {
-        // 1. The backend makes a request to the REAL N2YO API
-        const response = await axios.get(requestUrl);
-        const passes = response.data.passes;
+        // STEP 1: Geocoding with Positionstack
+        const geocodeUrl = `http://api.positionstack.com/v1/forward?access_key=${POSITIONSTACK_API_KEY}&query=${encodeURIComponent(locationQuery)}&limit=1`;
+        console.log(`[DEBUG] Calling Positionstack URL: ${geocodeUrl}`);
+        const geoResponse = await axios.get(geocodeUrl);
 
-        // 2. We format the real data to match what our frontend expects
-        const formattedEvents = passes.map(pass => ({
+        if (!geoResponse.data || geoResponse.data.data.length === 0) {
+            return res.status(404).json({ message: `Could not find coordinates for location: ${locationQuery}` });
+        }
+        const { latitude, longitude, label } = geoResponse.data.data[0];
+        console.log(`[DEBUG] Coordinates found: Lat ${latitude}, Lon ${longitude}`);
+
+        // STEP 2: Satellite Tracking with N2YO
+        const n2yoUrl = `https://api.n2yo.com/rest/v1/satellite/radiopasses/25544/${latitude}/${longitude}/0/2/10/&apiKey=${N2YO_API_KEY}`;
+        console.log(`[DEBUG] Calling N2YO URL: ${n2yoUrl}`);
+        const n2yoResponse = await axios.get(n2yoUrl);
+        const passes = n2yoResponse.data.passes || [];
+
+        const liveFlyoverEvents = passes.map(pass => ({
             type: 'flyover',
-            title: `Live ISS Pass for Your Location`,
+            title: `Live ISS Pass over ${label}`,
             date: new Date(pass.startUTC * 1000).toISOString(),
-            description: `A live pass of the ISS, reaching a max elevation of ${pass.maxEl}° above the horizon.`,
-            brightness: -3.5, // Mocking brightness for now
-            duration: Math.round(pass.duration / 60), // Duration in minutes
+            description: `A real-time pass of the ISS, reaching ${pass.maxEl}° above the horizon.`,
+            duration: Math.round(pass.duration / 60),
             details: `<strong>Max Elevation:</strong> ${pass.maxEl}°<br><strong>Appears:</strong> ${pass.startAz}° ${pass.startAzCompass}<br><strong>Disappears:</strong> ${pass.endAz}° ${pass.endAzCompass}`
         }));
 
-        // 3. Send the formatted LIVE data back to the frontend
-        res.json(formattedEvents);
+        const allEvents = [...liveFlyoverEvents, ...staticEvents];
+        const sortedEvents = allEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        res.json(sortedEvents);
 
     } catch (error) {
-        console.error("Error fetching data from N2YO:", error.message);
-        res.status(500).json({ message: "Failed to fetch live satellite data." });
+        console.error("\n--- ERROR IN BACKEND ---");
+        console.error(error.message);
+        if (error.response) { console.error("DETAILS:", error.response.data); }
+        console.error("------------------------\n");
+        res.status(500).json({ message: "An error occurred on the server." });
+    }
+});
+
+// APOD route (no changes needed here)
+router.get('/apod', async (req, res) => {
+    const NASA_API_KEY = process.env.NASA_API_KEY;
+    const apodUrl = `https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`;
+    try {
+        const response = await axios.get(apodUrl);
+        res.json(response.data);
+    } catch (error) {
+        console.error("Error fetching APOD from NASA:", error.message);
+        res.status(500).json({ message: "Failed to fetch Picture of the Day." });
     }
 });
 

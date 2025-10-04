@@ -1,30 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { mockApod } from './data/mockData';
 import CosmicFeature from './components/CosmicFeature';
 import ISSTracker from './components/ISSTracker';
 import EventsDisplay from './components/EventsDisplay';
 import EventModal from './components/EventModal';
 
 function App() {
-    const [location, setLocation] = useState('Koovappally, Kerala');
+    const [location, setLocation] = useState('New York');
     const [searchedLocation, setSearchedLocation] = useState(null);
     const [events, setEvents] = useState([]);
+    const [apodData, setApodData] = useState(null);
     const [selectedEvent, setSelectedEvent] = useState(null);
+    const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+    const [eventsError, setEventsError] = useState(null);
+    const [isLoadingApod, setIsLoadingApod] = useState(true);
+    const [apodError, setApodError] = useState(null);
+
+    useEffect(() => {
+        setIsLoadingApod(true);
+        setApodError(null);
+        fetch('http://localhost:5000/api/apod')
+            .then(response => response.ok ? response.json() : Promise.reject('Network response was not ok'))
+            .then(data => setApodData(data))
+            .catch(error => {
+                console.error("Error fetching APOD:", error);
+                setApodError("Could not load Picture of the Day.");
+            })
+            .finally(() => setIsLoadingApod(false));
+    }, []);
 
     const handleSearch = () => {
-        setSearchedLocation({ name: location, lat: 9.56, lon: 76.78 });
+        setIsLoadingEvents(true);
+        setEventsError(null);
+        // We set a temporary location object here immediately for the globe
+        setSearchedLocation({ name: location, lat: 40.71, lon: -74.00 }); // Using default coords, will be updated by geocoding on backend
 
-        // The URL now includes the location!
-        // We use encodeURIComponent to make sure spaces and special characters are handled correctly.
         fetch(`http://localhost:5000/api/events?location=${encodeURIComponent(location)}`)
-            .then(response => response.json())
+            .then(response => response.ok ? response.json() : Promise.reject('Could not fetch events for this location.'))
             .then(data => {
                 const sortedEvents = data.sort((a, b) => new Date(a.date) - new Date(b.date));
                 setEvents(sortedEvents);
             })
             .catch(error => {
                 console.error("Error fetching events from backend:", error);
-            });
+                setEventsError(error);
+            })
+            .finally(() => setIsLoadingEvents(false));
     };
 
     useEffect(() => {
@@ -49,12 +69,27 @@ function App() {
                                 <button onClick={handleSearch} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg">Search</button>
                             </div>
                         </div>
-                        {searchedLocation && <CosmicFeature apod={mockApod} location={searchedLocation} />}
+
+                        {/* This is the corrected rendering logic for the Cosmic Feature */}
+                        <div className="glass-card p-6">
+                            <h2 className="text-2xl font-semibold mb-4">Today's Cosmic Feature</h2>
+                            {isLoadingApod && <p>Loading Cosmic Feature...</p>}
+                            {apodError && <p className="text-red-400">{apodError}</p>}
+                            {apodData && searchedLocation && !isLoadingApod && !apodError && (
+                                <CosmicFeature apod={apodData} location={searchedLocation} />
+                            )}
+                        </div>
+
                         <ISSTracker />
                     </div>
                     <div className="lg:col-span-2">
-                         {searchedLocation && <h3 className="text-3xl font-bold mb-6 text-center">Sky Events for {searchedLocation.name}</h3>}
-                        <EventsDisplay events={events} onEventClick={setSelectedEvent} />
+                        {searchedLocation && <h3 className="text-3xl font-bold mb-6 text-center">Sky Events for {searchedLocation.name}</h3>}
+
+                        {isLoadingEvents && <p className="text-center">Loading events...</p>}
+                        {eventsError && <p className="text-center text-red-400">{eventsError}</p>}
+                        {!isLoadingEvents && !eventsError && (
+                            <EventsDisplay events={events} onEventClick={setSelectedEvent} />
+                        )}
                     </div>
                 </div>
             </div>

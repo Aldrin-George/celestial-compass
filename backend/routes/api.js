@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const { staticEvents } = require('../data/staticEvents'); // Make sure we have our other events
+const { staticEvents } = require('../data/staticEvents');
 
 router.get('/events', async (req, res) => {
     const locationQuery = req.query.location;
@@ -11,7 +11,6 @@ router.get('/events', async (req, res) => {
         return res.status(400).json({ message: "A location query is required." });
     }
 
-    // CORRECTED: We are now looking for the POSITIONSTACK key
     const POSITIONSTACK_API_KEY = process.env.POSITIONSTACK_API_KEY;
     const N2YO_API_KEY = process.env.N2YO_API_KEY;
 
@@ -19,7 +18,6 @@ router.get('/events', async (req, res) => {
     console.log(`[DEBUG] N2YO Key Loaded:          ${!!N2YO_API_KEY}`);
 
     try {
-        // STEP 1: Geocoding with Positionstack
         const geocodeUrl = `http://api.positionstack.com/v1/forward?access_key=${POSITIONSTACK_API_KEY}&query=${encodeURIComponent(locationQuery)}&limit=1`;
         console.log(`[DEBUG] Calling Positionstack URL: ${geocodeUrl}`);
         const geoResponse = await axios.get(geocodeUrl);
@@ -30,7 +28,6 @@ router.get('/events', async (req, res) => {
         const { latitude, longitude, label } = geoResponse.data.data[0];
         console.log(`[DEBUG] Coordinates found: Lat ${latitude}, Lon ${longitude}`);
 
-        // STEP 2: Satellite Tracking with N2YO
         const n2yoUrl = `https://api.n2yo.com/rest/v1/satellite/radiopasses/25544/${latitude}/${longitude}/0/2/10/&apiKey=${N2YO_API_KEY}`;
         console.log(`[DEBUG] Calling N2YO URL: ${n2yoUrl}`);
         const n2yoResponse = await axios.get(n2yoUrl);
@@ -59,7 +56,6 @@ router.get('/events', async (req, res) => {
     }
 });
 
-// APOD route (no changes needed here)
 router.get('/apod', async (req, res) => {
     const NASA_API_KEY = process.env.NASA_API_KEY;
     const apodUrl = `https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`;
@@ -69,6 +65,20 @@ router.get('/apod', async (req, res) => {
     } catch (error) {
         console.error("Error fetching APOD from NASA:", error.message);
         res.status(500).json({ message: "Failed to fetch Picture of the Day." });
+    }
+});
+
+// NEW ROUTE ADDED HERE: Handles the globe image proxy
+router.get('/globe-image', async (req, res) => {
+    try {
+        const response = await axios.get('https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/world.topo.bathy.200412.3x5400x2700.jpg', {
+            responseType: 'arraybuffer'
+        });
+        res.set('Content-Type', 'image/jpeg');
+        res.send(Buffer.from(response.data));
+    } catch (error) {
+        console.error("Failed to proxy globe image:", error);
+        res.status(500).send('Failed to fetch globe image');
     }
 });
 
